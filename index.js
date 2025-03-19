@@ -18,40 +18,42 @@ const groq = new Groq({
 
 app.post("/ask", async (req, res) => {
     const { query } = req.body;
-  
+
     if (!query) {
-      return res.status(400).json({ error: "Query is required!" });
+        return res.status(400).json({ error: "Query is required!" });
     }
-  
+
     try {
+        // Generate SQL query using Groq API
         const aiResponse = await groq.chat.completions.create({
             model: "llama3-8b-8192",
             messages: [
-              { role: "system", content: "You are a PostgreSQL SQL query generator. Return only valid SQL queries without markdown formatting." },
-              { role: "user", content: `Convert this into an SQL query: ${query}` },
+                { role: "system", content: "You are a PostgreSQL SQL query generator. Return only valid SQL queries without markdown formatting." },
+                { role: "user", content: `Convert this into an SQL query: ${query}` },
             ],
-          });
-          const sqlQuery = aiResponse.choices?.[0]?.message?.content?.trim();
-          
-  
-      if (!sqlQuery) {
-        return res.status(500).json({ error: "Failed to generate a valid SQL query." });
-      }
-  
-      console.log("Generated SQL:", sqlQuery);
-  
-      // Execute dynamic SQL query in Supabase
-      const { data, error } = await supabase.rpc("execute_raw_sql", { query: sqlQuery });
-  
-      if (error) {
-        return res.status(500).json({ error: error.message });
-      }
-  
-      res.json({ sqlQuery, result: data });
+        });
+
+        const sqlQuery = aiResponse.choices?.[0]?.message?.content?.trim();
+
+        if (!sqlQuery) {
+            return res.status(500).json({ error: "Failed to generate a valid SQL query." });
+        }
+
+        console.log("Generated SQL:", sqlQuery);
+
+        // Execute the SQL query in Supabase
+        const { data, error } = await supabase.rpc("execute_raw_sql", { query: sqlQuery });
+
+        if (error) {
+            return res.status(500).json({ error: error.message });
+        }
+
+        res.json({ sqlQuery, result: data ?? "Query executed successfully" });
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
-  });
+});
+
   
 
 // Fetch all products
